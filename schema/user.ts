@@ -154,47 +154,25 @@ const userSchema = new mongoose.Schema(
 // Indexes
 userSchema.index({ email: 1 });
 
-// @ts-ignore - Mongoose pre-hook typing
-userSchema.pre('save', async function (next) {
-  try {
-    if (!this.isModified('password')) {
-      // @ts-ignore
-      next();
-      return;
-    }
-
-    const rounds = 10;
-    const hash = await bcrypt.hash(this.password, rounds);
-    this.password = hash;
-
-    // @ts-ignore
-    next();
-  } catch (error: any) {
-    // @ts-ignore
-    next(error);
+userSchema.pre('save', async function () {
+  if (!this.isModified('password')) {
+    return;
   }
+
+  const rounds = 10;
+  const hash = await bcrypt.hash(this.password, rounds);
+  this.password = hash;
 });
 
-// @ts-ignore - Mongoose pre-hook typing
-userSchema.pre('updateOne', async function (next) {
-  try {
-    const update: any = this.getUpdate();
-    if (!update.password) {
-      // @ts-ignore
-      next();
-      return;
-    }
-
-    const rounds = 10;
-    const hash = await bcrypt.hash(update.password, rounds);
-    update.password = hash;
-
-    // @ts-ignore
-    next();
-  } catch (error: any) {
-    // @ts-ignore
-    next(error);
+userSchema.pre('updateOne', async function () {
+  const update: any = this.getUpdate();
+  if (!update.password) {
+    return;
   }
+
+  const rounds = 10;
+  const hash = await bcrypt.hash(update.password, rounds);
+  update.password = hash;
 });
 
 userSchema.method({
@@ -241,10 +219,10 @@ userSchema.statics.get = async function (id) {
   });
 };
 
-userSchema.statics.checkDuplicateEmail = function (error) {
-  if (error.name === 'MongoError' && error.code === 11000) {
+userSchema.statics.checkDuplicateEmail = function (error: any) {
+  if (error.code === 11000) {
     return new APIError({
-      message: 'Validation Error',
+      message: 'Validation failed',
       errors: [
         {
           field: 'email',

@@ -1,0 +1,49 @@
+import express from 'express';
+import controller from '@/api/controllers/course.controller';
+import { createCourseSchema, updateCourseSchema, getCourseSchema } from '@/api/validations/course.validation';
+import { validate } from '@/api/middlewares/validate';
+import { authorize, isAdmin } from '@/api/middlewares/auth';
+import { transformBody } from '@/api/middlewares/transform-body';
+
+const router = express.Router();
+
+// All routes require authentication and admin role
+router.use(authorize);
+router.use(isAdmin);
+
+/**
+ * @route   POST /v1/admin/courses
+ * @desc    Create a new course
+ * @access  Admin
+ */
+router.route('/').post(transformBody, validate(createCourseSchema), controller.create);
+
+/**
+ * @route   GET /v1/admin/courses
+ * @desc    Get all courses (with filters)
+ * @access  Admin
+ */
+router.route('/').get(controller.list);
+
+/**
+ * @route   GET /v1/admin/courses/:id
+ * @desc    Get course by ID or slug
+ * @access  Admin
+ */
+router.route('/:id').get(validate(getCourseSchema), controller.get);
+
+/**
+ * @route   PUT /v1/admin/courses/:id
+ * @desc    Update a course
+ * @access  Admin
+ */
+router.route('/:id').put(transformBody, validate(updateCourseSchema), controller.update);
+
+/**
+ * @route   DELETE /v1/admin/courses/:id
+ * @desc    Delete a course
+ * @access  Admin
+ */
+router.route('/:id').delete(validate(getCourseSchema), controller.remove);
+
+export default router;

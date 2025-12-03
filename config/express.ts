@@ -1,11 +1,11 @@
 import express from 'express';
-import bodyParser from 'body-parser';
 import compress from 'compression';
 import methodOverride from 'method-override';
 import cors from 'cors';
 import passport from 'passport';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import multer from 'multer';
 import { vars } from './vars';
 import { jwt } from './passport';
 import { converter, handler, notFound } from '@/api/middlewares/error';
@@ -21,13 +21,14 @@ const app = express();
 // request logging. dev: console | production: file
 app.use(morgan(logs));
 
-// parse body params and attache them to req.body
-app.use(bodyParser.json());
-app.use(
-  bodyParser.urlencoded({
-    extended: true,
-  })
-);
+// parse body params and attach them to req.body
+// Support both JSON and form-data
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Support multipart/form-data
+const upload = multer();
+app.use(upload.none()); // for parsing multipart/form-data without files
 
 // gzip compression
 app.use(compress());
