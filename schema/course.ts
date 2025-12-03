@@ -286,12 +286,6 @@ const courseSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
-    reviews: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Review',
-      },
-    ],
 
     // SEO & Metadata
     metaTitle: {
