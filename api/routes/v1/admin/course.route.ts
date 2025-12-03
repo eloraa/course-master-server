@@ -2,14 +2,9 @@ import express from 'express';
 import controller from '@/api/controllers/course.controller';
 import { createCourseSchema, updateCourseSchema, getCourseSchema } from '@/api/validations/course.validation';
 import { validate } from '@/api/middlewares/validate';
-import { authorize, isAdmin } from '@/api/middlewares/auth';
 import { transformBody } from '@/api/middlewares/transform-body';
 
 const router = express.Router();
-
-// All routes require authentication and admin role
-router.use(authorize);
-router.use(isAdmin);
 
 /**
  * @route   POST /v1/admin/courses

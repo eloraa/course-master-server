@@ -1,6 +1,8 @@
 import express from 'express';
 import authRoutes from './auth.route';
 import adminRoutes from './admin';
+import orderRoutes from './order.route';
+import { authorize, isAdmin } from '@/api/middlewares/auth';
 
 export const router = express.Router();
 
@@ -15,6 +17,11 @@ router.get('/status', (_, res) => res.send('OK'));
 router.use('/auth', authRoutes);
 
 /**
- * Admin routes
+ * Order routes (authenticated users)
  */
-router.use('/admin', adminRoutes);
+router.use('/orders', authorize, orderRoutes);
+
+/**
+ * Admin routes (admin only)
+ */
+router.use('/admin', authorize, isAdmin, adminRoutes);

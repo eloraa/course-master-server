@@ -3,6 +3,7 @@ import courseRoutes from './course.route';
 import quizRoutes from './quiz.route';
 import moduleRoutes from './module.route';
 import lessonRoutes from './lesson.route';
+import orderRoutes from './order.route';
 
 const router = express.Router();
 
@@ -25,5 +26,10 @@ router.use('/modules', moduleRoutes);
  * Admin lesson routes
  */
 router.use('/lessons', lessonRoutes);
+
+/**
+ * Admin order routes
+ */
+router.use('/orders', orderRoutes);
 
 export default router;
