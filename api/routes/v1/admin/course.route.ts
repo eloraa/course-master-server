@@ -21,6 +21,13 @@ router.route('/').post(transformBody, validate(createCourseSchema), controller.c
 router.route('/').get(controller.list);
 
 /**
+ * @route   GET /v1/admin/courses/stats
+ * @desc    Get course statistics
+ * @access  Admin
+ */
+router.route('/stats').get(controller.getStats);
+
+/**
  * @route   GET /v1/admin/courses/:id
  * @desc    Get course by ID or slug
  * @access  Admin

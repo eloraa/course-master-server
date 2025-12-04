@@ -278,4 +278,137 @@ userSchema.statics.findAndGenerateToken = async function (options: any) {
 
 (userSchema.statics as any).roles = roles;
 
+// Get user statistics
+userSchema.statics.getStats = async function ({ role, startDate, endDate }: any = {}) {
+  try {
+    // Build match query
+    const match: any = {};
+    if (role) {
+      match.role = role;
+    }
+
+    // Get total users
+    const users = await this.find(match).exec();
+    const studentCount = users.filter((u: any) => u.role === 'student').length;
+    const adminCount = users.filter((u: any) => u.role === 'admin').length;
+
+    // Calculate enrollment distribution
+    const enrollmentDistribution = {
+      '0_courses': 0,
+      '1_5_courses': 0,
+      '6_10_courses': 0,
+      '10plus_courses': 0,
+    };
+
+    let totalEnrollments = 0;
+
+    users.forEach((user: any) => {
+      const enrollmentCount = user.enrolledCourses?.length || 0;
+      totalEnrollments += enrollmentCount;
+
+      if (enrollmentCount === 0) enrollmentDistribution['0_courses']++;
+      else if (enrollmentCount <= 5) enrollmentDistribution['1_5_courses']++;
+      else if (enrollmentCount <= 10) enrollmentDistribution['6_10_courses']++;
+      else enrollmentDistribution['10plus_courses']++;
+    });
+
+    // Calculate active users (by last access)
+    const now = new Date();
+    const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const last30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const activeUsers = {
+      last24h: 0,
+      last7d: 0,
+      last30d: 0,
+    };
+
+    users.forEach((user: any) => {
+      const progress = user.progress || [];
+      if (progress.length === 0) return;
+
+      const latest = progress.reduce((latest: any, p: any) => {
+        const latest_time = latest?.lastAccessedAt ? new Date(latest.lastAccessedAt) : new Date(0);
+        const current_time = p.lastAccessedAt ? new Date(p.lastAccessedAt) : new Date(0);
+        return current_time > latest_time ? p : latest;
+      });
+
+      const lastAccessDate = new Date(latest?.lastAccessedAt);
+      if (lastAccessDate && lastAccessDate.getTime() > 0) {
+        if (lastAccessDate >= last24h) activeUsers.last24h++;
+        if (lastAccessDate >= last7d) activeUsers.last7d++;
+        if (lastAccessDate >= last30d) activeUsers.last30d++;
+      }
+    });
+
+    // Calculate user engagement
+    const engagement = {
+      highEngagement: { count: 0, description: 'Users with 70%+ progress in at least one course' },
+      mediumEngagement: { count: 0, description: 'Users with 30-70% progress' },
+      lowEngagement: { count: 0, description: 'Users with <30% progress or no activity' },
+    };
+
+    users.forEach((user: any) => {
+      const progress = user.progress || [];
+      if (progress.length === 0) {
+        engagement.lowEngagement.count++;
+      } else {
+        const maxProgress = Math.max(...progress.map((p: any) => p.percentage || 0), 0);
+        if (maxProgress >= 70) {
+          engagement.highEngagement.count++;
+        } else if (maxProgress >= 30) {
+          engagement.mediumEngagement.count++;
+        } else {
+          engagement.lowEngagement.count++;
+        }
+      }
+    });
+
+    // Get top courses by enrollment
+    const courseEnrollments: any = {};
+    const Course = mongoose.model('Course');
+
+    users.forEach((user: any) => {
+      user.enrolledCourses?.forEach((enrollment: any) => {
+        const courseId = enrollment.course?.toString() || enrollment.course;
+        courseEnrollments[courseId] = (courseEnrollments[courseId] || 0) + 1;
+      });
+    });
+
+    const topCourseIds = Object.entries(courseEnrollments)
+      .sort((a: any, b: any) => b[1] - a[1])
+      .slice(0, 5)
+      .map((e: any) => e[0]);
+
+    const topCourses = await Course.find({ _id: { $in: topCourseIds } })
+      .select('title')
+      .exec();
+
+    const topCoursesByEnrollment = topCourseIds
+      .map((courseId: string) => {
+        const course = topCourses.find((c: any) => c._id.toString() === courseId);
+        return {
+          courseId,
+          title: course?.title || 'Unknown Course',
+          enrollmentCount: courseEnrollments[courseId],
+        };
+      });
+
+    return {
+      totalUsers: users.length,
+      studentCount,
+      adminCount,
+      totalEnrollments,
+      enrollmentDistribution,
+      activeUsers,
+      averageEnrollmentPerUser: users.length > 0 ? totalEnrollments / users.length : 0,
+      userEngagement: engagement,
+      topCoursesByEnrollment,
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const User = mongoose.model('User', userSchema);

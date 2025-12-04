@@ -353,9 +353,6 @@ courseSchema.method({
       'duration',
       'estimatedEffort',
       'courseType',
-      'instructor',
-      'coInstructors',
-      'modules',
       'batches',
       'totalEnrolled',
       'ratingAverage',
@@ -370,6 +367,13 @@ courseSchema.method({
     fields.forEach(field => {
       transformed[field] = (this as any)[field];
     });
+
+    // Add module stats instead of full modules
+    const modules = (this as any).modules || [];
+    transformed.moduleStats = {
+      totalModules: modules.length,
+      totalLessons: modules.reduce((sum: number, m: any) => sum + (m.lessons?.length || 0), 0),
+    };
 
     return transformed;
   },
@@ -400,10 +404,7 @@ courseSchema.statics.get = async function (id) {
 
   if (mongoose.Types.ObjectId.isValid(id)) {
     try {
-      course = await this.findById(id)
-        .populate('instructor', 'name email')
-        .populate('coInstructors', 'name email')
-        .exec();
+      course = await this.findById(id).exec();
     } catch (error) {
       throw error;
     }
@@ -421,10 +422,7 @@ courseSchema.statics.get = async function (id) {
 
 courseSchema.statics.getBySlug = async function (slug: string) {
   try {
-    const course = await this.findOne({ slug })
-      .populate('instructor', 'name email')
-      .populate('coInstructors', 'name email')
-      .exec();
+    const course = await this.findOne({ slug }).exec();
 
     if (course) {
       return course;
@@ -474,7 +472,6 @@ courseSchema.statics.list = async function ({
       .sort({ createdAt: -1 })
       .skip(perPage * (page - 1))
       .limit(perPage)
-      .populate('instructor', 'name email')
       .exec();
 
     const total = await this.countDocuments(options);

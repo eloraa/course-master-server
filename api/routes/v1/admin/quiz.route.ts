@@ -21,6 +21,13 @@ router.post('/', transformBody, validate(createQuizSchema), quizController.creat
 router.get('/', quizController.list);
 
 /**
+ * @route GET /admin/quizzes/stats
+ * @desc Get quiz statistics
+ * @access Admin only
+ */
+router.get('/stats', quizController.getStats);
+
+/**
  * @route GET /admin/quizzes/:id
  * @desc Get quiz by ID
  * @access Admin only

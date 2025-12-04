@@ -301,4 +301,145 @@ quizSchema.statics.list = async function ({
   }
 };
 
+// Get quiz statistics
+quizSchema.statics.getStats = async function ({ quizId, courseId, startDate, endDate }: any = {}) {
+  const User = mongoose.model('User');
+
+  try {
+    // Find quizzes based on filters
+    let quizzes;
+    if (quizId) {
+      quizzes = [await this.findById(quizId).exec()];
+    } else if (courseId) {
+      quizzes = await this.find({ course: courseId }).exec();
+    } else {
+      quizzes = await this.find({}).exec();
+    }
+
+    const quizStats = await Promise.all(
+      quizzes.map(async (quiz: any) => {
+        // Get all user quiz submissions for this quiz
+        const users: any = await User.find({
+          'quizzes.quiz': quiz._id,
+        }).exec();
+
+        const submissions = users.flatMap((user: any) =>
+          user.quizzes.filter((q: any) => q.quiz?.toString() === quiz._id?.toString())
+        );
+
+        // Filter by date if provided
+        let filteredSubmissions = submissions;
+        if (startDate || endDate) {
+          filteredSubmissions = submissions.filter((s: any) => {
+            const subDate = new Date(s.submittedAt);
+            const isAfterStart = !startDate || subDate >= new Date(startDate);
+            const isBeforeEnd = !endDate || subDate <= new Date(endDate);
+            return isAfterStart && isBeforeEnd;
+          });
+        }
+
+        const passCount = filteredSubmissions.filter((s: any) => s.passed).length;
+        const failCount = filteredSubmissions.length - passCount;
+        const averageScore =
+          filteredSubmissions.length > 0
+            ? filteredSubmissions.reduce((sum: number, s: any) => sum + (s.score || 0), 0) /
+              filteredSubmissions.length
+            : 0;
+
+        return {
+          quizId: quiz._id,
+          title: quiz.title,
+          course: {
+            courseId: quiz.course,
+            title: quiz.course?.title || 'Unknown Course',
+          },
+          submissionCount: filteredSubmissions.length,
+          averageScore: Math.round(averageScore * 100) / 100,
+          passRate:
+            filteredSubmissions.length > 0
+              ? Math.round((passCount / filteredSubmissions.length) * 100 * 100) / 100
+              : 0,
+          passCount,
+          failCount,
+          totalPoints: quiz.totalPoints || 0,
+          averagePointsEarned:
+            filteredSubmissions.length > 0
+              ? Math.round(
+                  (filteredSubmissions.reduce((sum: number, s: any) => {
+                    const earnedPoints = s.answers?.reduce((pSum: number, a: any) => pSum + (a.earnedPoints || 0), 0) || 0;
+                    return sum + earnedPoints;
+                  }, 0) / filteredSubmissions.length) * 100
+                ) / 100
+              : 0,
+          timeTaken: {
+            min:
+              filteredSubmissions.length > 0
+                ? Math.min(...filteredSubmissions.map((s: any) => s.timeTaken || 0))
+                : 0,
+            max:
+              filteredSubmissions.length > 0
+                ? Math.max(...filteredSubmissions.map((s: any) => s.timeTaken || 0))
+                : 0,
+            average:
+              filteredSubmissions.length > 0
+                ? Math.round(
+                    (filteredSubmissions.reduce((sum: number, s: any) => sum + (s.timeTaken || 0), 0) /
+                      filteredSubmissions.length) * 100
+                  ) / 100
+                : 0,
+          },
+          createdAt: quiz.createdAt,
+        };
+      })
+    );
+
+    // Calculate overall statistics
+    const totalSubmissions = quizStats.reduce((sum: number, q: any) => sum + q.submissionCount, 0);
+    const averageScore =
+      quizStats.length > 0
+        ? Math.round(
+            (quizStats.reduce((sum: number, q: any) => sum + q.averageScore * q.submissionCount, 0) /
+              totalSubmissions) *
+              100
+          ) / 100
+        : 0;
+    const averagePassRate =
+      quizStats.length > 0
+        ? Math.round((quizStats.reduce((sum: number, q: any) => sum + q.passRate, 0) / quizStats.length) * 100) / 100
+        : 0;
+
+    // Get unique participants
+    const participantIds = new Set<string>();
+    const User = mongoose.model('User');
+    const allUsers: any = await User.find({}).exec();
+    allUsers.forEach((user: any) => {
+      if (user.quizzes && user.quizzes.length > 0) {
+        participantIds.add(user._id.toString());
+      }
+    });
+
+    return {
+      totalQuizzes: quizStats.length,
+      totalSubmissions,
+      averageScore: isNaN(averageScore) ? 0 : averageScore,
+      averagePassRate: isNaN(averagePassRate) ? 0 : averagePassRate,
+      quizzes: quizStats,
+      summary: {
+        totalParticipants: participantIds.size,
+        completionRate: participantIds.size > 0 ? Math.round((totalSubmissions / participantIds.size) * 100 * 100) / 100 : 0,
+        mostDifficultQuiz:
+          quizStats.length > 0
+            ? quizStats.reduce((min: any, q: any) => (q.averageScore < (min.averageScore || 100) ? q : min))
+            : null,
+        easiestQuiz:
+          quizStats.length > 0
+            ? quizStats.reduce((max: any, q: any) => (q.averageScore > (max.averageScore || 0) ? q : max))
+            : null,
+      },
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const Quiz = mongoose.model('Quiz', quizSchema);

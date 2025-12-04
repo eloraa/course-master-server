@@ -114,4 +114,28 @@ export const remove = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export default { create, list, get, update, remove };
+/**
+ * Get quiz statistics
+ */
+export const getStats = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { quizId, courseId, startDate, endDate } = req.query;
+
+    const stats = await (Quiz as any).getStats({
+      quizId,
+      courseId,
+      startDate,
+      endDate,
+    });
+
+    res.json({
+      status: httpStatus.OK,
+      message: 'Quiz statistics retrieved successfully',
+      data: stats,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export default { create, list, get, update, remove, getStats };

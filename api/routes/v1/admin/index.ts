@@ -4,6 +4,7 @@ import quizRoutes from './quiz.route';
 import moduleRoutes from './module.route';
 import lessonRoutes from './lesson.route';
 import orderRoutes from './order.route';
+import userRoutes from './user.route';
 
 const router = express.Router();
 
@@ -31,5 +32,10 @@ router.use('/lessons', lessonRoutes);
  * Admin order routes
  */
 router.use('/orders', orderRoutes);
+
+/**
+ * Admin user routes
+ */
+router.use('/users', userRoutes);
 
 export default router;

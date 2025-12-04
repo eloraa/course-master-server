@@ -152,4 +152,109 @@ export const remove = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export default { create, list, get, update, remove };
+/**
+ * Get course statistics
+ */
+export const getStats = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { courseId, startDate, endDate } = req.query;
+
+    // Build match query for orders
+    const orderMatch: any = { status: 'completed' };
+
+    if (startDate || endDate) {
+      orderMatch.completedAt = {};
+      if (startDate) orderMatch.completedAt.$gte = new Date(startDate as string);
+      if (endDate) orderMatch.completedAt.$lte = new Date(endDate as string);
+    }
+
+    // Get courses with their stats
+    let courses;
+    if (courseId) {
+      courses = [await (Course as any).get(courseId as string)];
+    } else {
+      const result: any = await (Course as any).list({
+        perPage: 1000,
+      });
+      courses = result.courses;
+    }
+
+    // Calculate stats for each course
+    const courseStats = await Promise.all(
+      courses.map(async (course: any) => {
+        // Get order revenue for this course
+        const Order = (await import('@/schema/order')).Order;
+        const orders = await Order.aggregate([
+          {
+            $match: orderMatch,
+          },
+          {
+            $unwind: '$items',
+          },
+          {
+            $match: {
+              'items.course': course._id,
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalRevenue: { $sum: '$total' },
+              totalSales: { $sum: 1 },
+            },
+          },
+        ]);
+
+        const revenue = orders[0]?.totalRevenue || 0;
+        const totalSales = orders[0]?.totalSales || 0;
+
+        return {
+          courseId: course._id,
+          title: course.title,
+          slug: course.slug,
+          isPublished: course.isPublished,
+          totalEnrolled: course.totalEnrolled || 0,
+          revenue: revenue,
+          totalSales: totalSales,
+          averageRating: course.ratingAverage || 0,
+          ratingCount: course.ratingCount || 0,
+          totalLessons: course.modules?.reduce((sum: number, m: any) => sum + (m.lessons?.length || 0), 0) || 0,
+          totalDuration: course.duration || 0,
+          createdAt: course.createdAt,
+        };
+      })
+    );
+
+    // Calculate summary
+    const summary = {
+      totalCourses: courseStats.length,
+      publishedCourses: courseStats.filter((c: any) => c.isPublished).length,
+      draftCourses: courseStats.filter((c: any) => !c.isPublished).length,
+      totalEnrollments: courseStats.reduce((sum: number, c: any) => sum + (c.totalEnrolled || 0), 0),
+      totalRevenue: courseStats.reduce((sum: number, c: any) => sum + (c.revenue || 0), 0),
+      averageRating: courseStats.length > 0
+        ? courseStats.reduce((sum: number, c: any) => sum + (c.averageRating || 0), 0) / courseStats.length
+        : 0,
+    };
+
+    res.json({
+      status: httpStatus.OK,
+      message: 'Course statistics retrieved successfully',
+      data: {
+        ...summary,
+        courses: courseStats,
+        summary: {
+          averageEnrollmentPerCourse: summary.totalCourses > 0 ? summary.totalEnrollments / summary.totalCourses : 0,
+          averageRevenuePerCourse: summary.totalCourses > 0 ? summary.totalRevenue / summary.totalCourses : 0,
+          topCourse: courseStats.length > 0
+            ? courseStats.reduce((top: any, c: any) => (c.revenue > (top.revenue || 0) ? c : top))
+            : null,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export default { create, list, get, update, remove, getStats };
