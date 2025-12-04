@@ -46,6 +46,8 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
     const token = savedUser.token();
 
     res.status(httpStatus.CREATED).json({
+      status: 'success',
+      message: 'User created successfully.',
       token: generateTokenResponse(savedUser, token),
       user: userTransformed,
     });
@@ -69,7 +71,12 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
     const token = generateTokenResponse(user, accessToken);
     const userTransformed = user.transform();
 
-    return res.json({ token, user: userTransformed });
+    return res.json({
+      status: 'success',
+      message: 'Logged in successfully.',
+      token,
+      user: userTransformed,
+    });
   } catch (error) {
     return next(error);
   }
