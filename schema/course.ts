@@ -442,12 +442,17 @@ courseSchema.statics.list = async function ({
   perPage = 30,
   category,
   level,
-  isPublished = true,
+  isPublished,
   minPrice,
   maxPrice,
   search,
 }: any = {}) {
-  const options: any = { isPublished };
+  const options: any = { deletedAt: null };
+
+  // Only filter by isPublished if explicitly provided
+  if (isPublished !== undefined) {
+    options.isPublished = isPublished;
+  }
 
   if (category) {
     options.category = category;

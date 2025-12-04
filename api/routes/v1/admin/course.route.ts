@@ -28,6 +28,27 @@ router.route('/').get(controller.list);
 router.route('/stats').get(controller.getStats);
 
 /**
+ * @route   PATCH /v1/admin/courses/:id/publish
+ * @desc    Publish a course
+ * @access  Admin
+ */
+router.route('/:id/publish').patch(validate(getCourseSchema), controller.publish);
+
+/**
+ * @route   PATCH /v1/admin/courses/:id/unpublish
+ * @desc    Unpublish a course
+ * @access  Admin
+ */
+router.route('/:id/unpublish').patch(validate(getCourseSchema), controller.unpublish);
+
+/**
+ * @route   PATCH /v1/admin/courses/:id/visibility
+ * @desc    Update course visibility
+ * @access  Admin
+ */
+router.route('/:id/visibility').patch(validate(getCourseSchema), controller.updateVisibility);
+
+/**
  * @route   GET /v1/admin/courses/:id
  * @desc    Get course by ID or slug
  * @access  Admin

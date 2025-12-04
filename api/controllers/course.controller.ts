@@ -47,16 +47,22 @@ export const list = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { page = 1, perPage = 30, category, level, isPublished, minPrice, maxPrice, search } = req.query;
 
-    const result: any = await (Course as any).list({
+    const listOptions: any = {
       page: Number(page),
       perPage: Number(perPage),
       category,
       level,
-      isPublished: isPublished === 'true',
       minPrice: minPrice ? Number(minPrice) : undefined,
       maxPrice: maxPrice ? Number(maxPrice) : undefined,
       search,
-    });
+    };
+
+    // Only include isPublished if explicitly provided
+    if (isPublished !== undefined) {
+      listOptions.isPublished = isPublished === 'true';
+    }
+
+    const result: any = await (Course as any).list(listOptions);
 
     res.json({
       status: httpStatus.OK,
@@ -257,4 +263,81 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
   }
 };
 
-export default { create, list, get, update, remove, getStats };
+/**
+ * Publish course
+ */
+export const publish = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const course = await (Course as any).get(id);
+
+    course.isPublished = true;
+    const updatedCourse: any = await course.save();
+
+    res.json({
+      status: httpStatus.OK,
+      message: 'Course published successfully',
+      data: updatedCourse.transform(),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Unpublish course
+ */
+export const unpublish = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const course = await (Course as any).get(id);
+
+    course.isPublished = false;
+    const updatedCourse: any = await course.save();
+
+    res.json({
+      status: httpStatus.OK,
+      message: 'Course unpublished successfully',
+      data: updatedCourse.transform(),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Update course visibility
+ */
+export const updateVisibility = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { visibility } = req.body;
+
+    if (!['public', 'unlisted', 'private'].includes(visibility)) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        status: httpStatus.BAD_REQUEST,
+        message: 'Validation failed',
+        errors: [
+          {
+            field: 'visibility',
+            message: 'visibility must be one of: public, unlisted, private',
+          },
+        ],
+      });
+    }
+
+    const course = await (Course as any).get(id);
+    course.visibility = visibility;
+    const updatedCourse: any = await course.save();
+
+    res.json({
+      status: httpStatus.OK,
+      message: 'Course visibility updated successfully',
+      data: updatedCourse.transform(),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export default { create, list, get, update, remove, publish, unpublish, updateVisibility, getStats };
