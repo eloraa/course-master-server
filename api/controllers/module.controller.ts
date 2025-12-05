@@ -31,12 +31,18 @@ export const list = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { page = 1, perPage = 30, course, isPublished } = req.query;
 
-    const result: any = await (Module as any).list({
+    const listOptions: any = {
       page: Number(page),
       perPage: Number(perPage),
       course,
-      isPublished: isPublished === 'true',
-    });
+    };
+
+    // Only include isPublished if explicitly provided
+    if (isPublished !== undefined) {
+      listOptions.isPublished = isPublished === 'true';
+    }
+
+    const result: any = await (Module as any).list(listOptions);
 
     res.json({
       status: httpStatus.OK,

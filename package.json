@@ -1,8 +1,11 @@
 {
   "name": "backend",
-  "module": "index.ts",
-  "type": "module",
   "private": true,
+  "scripts": {
+    "dev": "bun --hot run index.ts",
+    "build": "tsc && npx tsc-alias",
+    "start": "node dist/index.js"
+  },
   "devDependencies": {
     "@types/bluebird": "^3.5.42",
     "@types/bun": "latest",
@@ -15,10 +18,8 @@
     "@types/morgan": "^1.9.10",
     "@types/multer": "^2.0.0",
     "@types/passport": "^1.0.17",
-    "@types/passport-jwt": "^4.0.1"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
+    "@types/passport-jwt": "^4.0.1",
+    "typescript": "^5.0.0"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

@@ -1,9 +1,17 @@
 import { Router } from 'express';
 import * as courseController from '@/api/controllers/student/course.controller';
 import { validate } from '@/api/middlewares/validate';
-import { getCourseSchema } from '@/api/validations/student-content.validation';
+import { transformBody } from '@/api/middlewares/transform-body';
+import { createEnrollmentSchema, getCourseSchema } from '@/api/validations/student-content.validation';
 
 const router = Router();
+
+/**
+ * @route POST /me/courses/enroll
+ * @desc Enroll in a course
+ * @access Authenticated
+ */
+router.post('/enroll', transformBody, validate(createEnrollmentSchema), courseController.enrollInCourse);
 
 /**
  * @route GET /me/courses

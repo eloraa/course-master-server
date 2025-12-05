@@ -55,8 +55,6 @@ export const createCourseSchema = z.object({
     language: z.string().default('en'),
     estimatedEffort: z.string().optional(),
     courseType: z.enum(['self-paced', 'cohort', 'blended']).default('self-paced'),
-    instructor: z.string().optional(), // ObjectId as string
-    coInstructors: z.array(z.string()).optional(),
     modules: z.array(moduleSchema).optional(),
     batches: z.array(batchSchema).optional(),
     metaTitle: z.string().optional(),

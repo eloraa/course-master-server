@@ -34,10 +34,26 @@ export const getCourseModules = async (req: Request, res: Response, next: NextFu
       perPage: 100,
     });
 
+    // Get published lesson count for each module
+    const modulesWithPublishedCounts = await Promise.all(
+      result.modules.map(async (module: any) => {
+        const publishedLessonCount = await (Lesson as any).countDocuments({
+          module: module._id,
+          isPublished: true,
+        });
+
+        const transformed = module.transform();
+        return {
+          ...transformed,
+          lessonCount: publishedLessonCount,
+        };
+      })
+    );
+
     res.json({
       status: httpStatus.OK,
       message: 'Modules retrieved successfully',
-      data: result.modules.map((module: any) => module.transform()),
+      data: modulesWithPublishedCounts,
     });
   } catch (error) {
     next(error);
@@ -67,10 +83,29 @@ export const getModuleLessons = async (req: Request, res: Response, next: NextFu
       perPage: 100,
     });
 
+    // Get student's progress to check lesson completion
+    const userDoc: any = await User.findById(user._id).exec();
+    const progress = userDoc.progress.find((p: any) => p.course.toString() === courseId);
+
+    const lessonsWithCompletion = result.lessons.map((lesson: any) => {
+      const isCompleted = progress?.completedLessons?.some(
+        (cl: any) => cl.lessonId?.toString?.() === lesson._id?.toString?.()
+      ) || false;
+      const completedAt = progress?.completedLessons?.find(
+        (cl: any) => cl.lessonId?.toString?.() === lesson._id?.toString?.()
+      )?.completedAt || null;
+
+      return {
+        ...lesson.transform(),
+        completed: isCompleted,
+        completedAt,
+      };
+    });
+
     res.json({
       status: httpStatus.OK,
       message: 'Lessons retrieved successfully',
-      data: result.lessons.map((lesson: any) => lesson.transform()),
+      data: lessonsWithCompletion,
     });
   } catch (error) {
     next(error);
@@ -97,7 +132,7 @@ export const getLesson = async (req: Request, res: Response, next: NextFunction)
     const lesson = await (Lesson as any).get(lessonId);
 
     // Verify lesson belongs to the course
-    if (lesson.course.toString() !== courseId) {
+    if (lesson.course._id.toString() !== courseId) {
       return res.status(httpStatus.FORBIDDEN).json({
         status: httpStatus.FORBIDDEN,
         message: 'Lesson does not belong to this course',
@@ -112,10 +147,24 @@ export const getLesson = async (req: Request, res: Response, next: NextFunction)
       });
     }
 
+    // Check if lesson is completed
+    const userDoc: any = await User.findById(user._id).exec();
+    const progress = userDoc.progress.find((p: any) => p.course.toString() === courseId);
+    const isCompleted = progress?.completedLessons?.some(
+      (cl: any) => cl.lessonId?.toString?.() === lessonId
+    ) || false;
+    const completedAt = progress?.completedLessons?.find(
+      (cl: any) => cl.lessonId?.toString?.() === lessonId
+    )?.completedAt || null;
+
     res.json({
       status: httpStatus.OK,
       message: 'Lesson retrieved successfully',
-      data: lesson.transform(),
+      data: {
+        ...lesson.transform(),
+        completed: isCompleted,
+        completedAt,
+      },
     });
   } catch (error) {
     next(error);
@@ -141,7 +190,7 @@ export const markLessonComplete = async (req: Request, res: Response, next: Next
     // Get lesson to verify it exists and belongs to course
     const lesson = await (Lesson as any).get(lessonId);
 
-    if (lesson.course.toString() !== courseId) {
+    if (lesson.course._id.toString() !== courseId) {
       return res.status(httpStatus.FORBIDDEN).json({
         status: httpStatus.FORBIDDEN,
         message: 'Lesson does not belong to this course',
@@ -166,8 +215,14 @@ export const markLessonComplete = async (req: Request, res: Response, next: Next
     }
 
     // Add lesson to completed lessons if not already completed
-    if (!progressEntry.completedLessons.includes(lessonId)) {
-      progressEntry.completedLessons.push(lessonId);
+    const alreadyCompleted = progressEntry.completedLessons.some(
+      (cl: any) => cl.lessonId?.toString?.() === lessonId
+    );
+    if (!alreadyCompleted) {
+      progressEntry.completedLessons.push({
+        lessonId,
+        completedAt: new Date(),
+      });
     }
 
     // Update last accessed time
@@ -190,6 +245,8 @@ export const markLessonComplete = async (req: Request, res: Response, next: Next
       data: {
         course: courseId,
         lesson: lessonId,
+        completed: true,
+        completedAt: new Date(),
         progress: {
           percentage: progressEntry.percentage,
           completedLessons: progressEntry.completedLessons.length,

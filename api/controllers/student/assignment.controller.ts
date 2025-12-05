@@ -27,7 +27,7 @@ export const getAssignment = async (req: Request, res: Response, next: NextFunct
     const assignment = await (Assignment as any).get(assignmentId);
 
     // Verify assignment belongs to course
-    if (assignment.course.toString() !== courseId) {
+    if (assignment.course._id.toString() !== courseId) {
       return res.status(httpStatus.FORBIDDEN).json({
         status: httpStatus.FORBIDDEN,
         message: 'Assignment does not belong to this course',
@@ -90,7 +90,7 @@ export const submitAssignment = async (req: Request, res: Response, next: NextFu
     const assignment = await (Assignment as any).get(assignmentId);
 
     // Verify assignment belongs to course
-    if (assignment.course.toString() !== courseId) {
+    if (assignment.course._id.toString() !== courseId) {
       return res.status(httpStatus.FORBIDDEN).json({
         status: httpStatus.FORBIDDEN,
         message: 'Assignment does not belong to this course',

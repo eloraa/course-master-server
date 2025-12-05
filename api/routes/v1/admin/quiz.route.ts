@@ -42,6 +42,13 @@ router.get('/:id', validate(getQuizSchema), quizController.get);
 router.put('/:id', transformBody, validate(updateQuizSchema), quizController.update);
 
 /**
+ * @route PATCH /admin/quizzes/:id/publish
+ * @desc Publish/unpublish quiz
+ * @access Admin only
+ */
+router.patch('/:id/publish', validate(getQuizSchema), quizController.publish);
+
+/**
  * @route DELETE /admin/quizzes/:id
  * @desc Delete quiz
  * @access Admin only

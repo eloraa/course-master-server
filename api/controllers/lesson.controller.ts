@@ -2,6 +2,8 @@ import httpStatus from 'http-status';
 import type { Request, Response, NextFunction } from 'express';
 import { Lesson } from '@/schema/lesson';
 import { Module } from '@/schema/module';
+import { Quiz } from '@/schema/quiz';
+import { Assignment } from '@/schema/assignment';
 
 /**
  * Create a new lesson
@@ -22,6 +24,15 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       });
     }
 
+    // If lesson is created as published, also publish its associated quiz or assignment
+    if (savedLesson.isPublished) {
+      if (savedLesson.type === 'quiz' && savedLesson.quiz) {
+        await (Quiz as any).findByIdAndUpdate(savedLesson.quiz, { isPublished: true });
+      } else if (savedLesson.type === 'assignment' && savedLesson.assignment) {
+        await (Assignment as any).findByIdAndUpdate(savedLesson.assignment, { isPublished: true });
+      }
+    }
+
     res.status(httpStatus.CREATED).json({
       status: httpStatus.CREATED,
       message: 'Lesson created successfully',
@@ -39,14 +50,20 @@ export const list = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { page = 1, perPage = 30, course, module, type, isPublished } = req.query;
 
-    const result: any = await (Lesson as any).list({
+    const listOptions: any = {
       page: Number(page),
       perPage: Number(perPage),
       course,
       module,
       type,
-      isPublished: isPublished === 'true',
-    });
+    };
+
+    // Only include isPublished if explicitly provided
+    if (isPublished !== undefined) {
+      listOptions.isPublished = isPublished === 'true';
+    }
+
+    const result: any = await (Lesson as any).list(listOptions);
 
     res.json({
       status: httpStatus.OK,
@@ -90,8 +107,31 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
     const { id } = req.params;
     const lesson = await (Lesson as any).get(id);
 
+    // Store the old publish state before updating
+    const wasPublished = lesson.isPublished;
+
+    // Update the lesson
     Object.assign(lesson, req.body);
     const updatedLesson: any = await lesson.save();
+
+    // Sync quiz/assignment publication status with lesson
+    const isNowPublished = updatedLesson.isPublished;
+
+    // If lesson is published, make sure quiz/assignment is also published
+    if (isNowPublished) {
+      if (updatedLesson.type === 'quiz' && updatedLesson.quiz) {
+        await (Quiz as any).findByIdAndUpdate(updatedLesson.quiz, { isPublished: true });
+      } else if (updatedLesson.type === 'assignment' && updatedLesson.assignment) {
+        await (Assignment as any).findByIdAndUpdate(updatedLesson.assignment, { isPublished: true });
+      }
+    } else {
+      // If lesson is unpublished, unpublish quiz/assignment as well
+      if (updatedLesson.type === 'quiz' && updatedLesson.quiz) {
+        await (Quiz as any).findByIdAndUpdate(updatedLesson.quiz, { isPublished: false });
+      } else if (updatedLesson.type === 'assignment' && updatedLesson.assignment) {
+        await (Assignment as any).findByIdAndUpdate(updatedLesson.assignment, { isPublished: false });
+      }
+    }
 
     res.json({
       status: httpStatus.OK,

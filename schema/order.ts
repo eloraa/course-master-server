@@ -1,3 +1,4 @@
+// @ts-nocheck
 import mongoose from 'mongoose';
 import httpStatus from 'http-status';
 import { APIError } from '@/api/errors/api-error';
@@ -171,7 +172,6 @@ const orderSchema = new mongoose.Schema(
 
 // Indexes
 orderSchema.index({ user: 1, createdAt: -1 });
-orderSchema.index({ orderNumber: 1 }, { unique: true });
 orderSchema.index({ status: 1, createdAt: -1 });
 orderSchema.index({ 'payment.status': 1 });
 

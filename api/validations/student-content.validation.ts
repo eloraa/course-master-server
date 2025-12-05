@@ -26,3 +26,10 @@ export const markCompleteSchema = z.object({
     lessonId: z.string().min(1),
   }),
 });
+
+export const createEnrollmentSchema = z.object({
+  body: z.object({
+    courseId: z.string().min(1),
+    batchId: z.string().optional(),
+  }),
+});

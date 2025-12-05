@@ -71,11 +71,10 @@ const quizSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Course',
       required: true,
-      index: true,
     },
     module: {
       type: mongoose.Schema.Types.ObjectId,
-      required: true,
+      required: false,
       index: true,
     },
     lesson: {
@@ -181,6 +180,7 @@ const quizSchema = new mongoose.Schema(
 );
 
 // Indexes
+quizSchema.index({ course: 1 });
 quizSchema.index({ course: 1, module: 1 });
 quizSchema.index({ isPublished: 1, createdAt: -1 });
 quizSchema.index({ dueDate: 1 });
@@ -197,7 +197,6 @@ quizSchema.method({
       'course',
       'module',
       'lesson',
-      'questions',
       'type',
       'passingScore',
       'totalPoints',
@@ -222,6 +221,23 @@ quizSchema.method({
     fields.forEach(field => {
       transformed[field] = (this as any)[field];
     });
+
+    // Transform questions array to exclude Mongoose internal properties
+    transformed.questions = (this as any).questions?.map((question: any) => ({
+      questionId: question.questionId,
+      title: question.title,
+      type: question.type,
+      content: question.content,
+      options: question.options?.map((opt: any) => ({
+        id: opt.id,
+        text: opt.text,
+        isCorrect: opt.isCorrect,
+      })) || [],
+      correctAnswer: question.correctAnswer,
+      points: question.points,
+      explanation: question.explanation,
+      order: question.order,
+    })) || [];
 
     return transformed;
   },

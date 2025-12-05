@@ -6,6 +6,7 @@ import lessonRoutes from './lesson.route';
 import orderRoutes from './order.route';
 import userRoutes from './user.route';
 import batchRoutes from './batch.route';
+import assignmentRoutes from './assignment.route';
 
 const router = express.Router();
 
@@ -43,5 +44,10 @@ router.use('/users', userRoutes);
  * Admin batch routes
  */
 router.use('/batches', batchRoutes);
+
+/**
+ * Admin assignment routes
+ */
+router.use('/assignments', assignmentRoutes);
 
 export default router;

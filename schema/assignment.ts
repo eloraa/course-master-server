@@ -24,11 +24,10 @@ const assignmentSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Course',
       required: true,
-      index: true,
     },
     module: {
       type: mongoose.Schema.Types.ObjectId,
-      required: true,
+      required: false,
       index: true,
     },
     lesson: {
@@ -112,6 +111,7 @@ const assignmentSchema = new mongoose.Schema(
 );
 
 // Indexes
+assignmentSchema.index({ course: 1 });
 assignmentSchema.index({ course: 1, module: 1 });
 assignmentSchema.index({ isPublished: 1, createdAt: -1 });
 

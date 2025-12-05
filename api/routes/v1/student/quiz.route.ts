@@ -33,7 +33,6 @@ router.get('/:courseId/quizzes/:quizId', validate(getQuizSchema), quizController
 router.post(
   '/:courseId/quizzes/:quizId/submit',
   transformBody,
-  validate(submitQuizSchema),
   quizController.submitQuiz
 );
 

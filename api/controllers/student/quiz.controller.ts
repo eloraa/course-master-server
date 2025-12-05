@@ -27,7 +27,7 @@ export const getQuiz = async (req: Request, res: Response, next: NextFunction) =
     const quiz = await (Quiz as any).get(quizId);
 
     // Verify quiz belongs to course
-    if (quiz.course.toString() !== courseId) {
+    if (quiz.course._id.toString() !== courseId) {
       return res.status(httpStatus.FORBIDDEN).json({
         status: httpStatus.FORBIDDEN,
         message: 'Quiz does not belong to this course',
@@ -60,23 +60,73 @@ export const getQuiz = async (req: Request, res: Response, next: NextFunction) =
 
     // Get user's previous attempts
     const userDoc: any = await User.findById(user._id).exec();
-    const quizAttempts = userDoc.quizzes.filter((q: any) => q.course.toString() === courseId);
+    const quizAttempts = userDoc.quizzes.filter((q: any) => q.quiz?.toString?.() === quizId);
+    const hasAttempted = quizAttempts.length > 0;
+    const lastAttempt = hasAttempted ? quizAttempts[quizAttempts.length - 1] : null;
 
-    // Check max attempts
-    if (quizAttempts.length >= quiz.maxAttempts) {
+    // Check max attempts (only if not already attempted, or if can attempt again)
+    if (!hasAttempted && quizAttempts.length >= quiz.maxAttempts) {
       return res.status(httpStatus.FORBIDDEN).json({
         status: httpStatus.FORBIDDEN,
         message: 'Maximum attempts reached for this quiz',
       });
     }
 
-    // Transform quiz and remove correct answers for security
+    // Transform quiz
     const quizData = quiz.transform();
+
+    // If quiz already attempted, show with answers and marks
+    if (hasAttempted) {
+      const questionsWithAnswers = quizData.questions.map((q: any) => {
+        const userAnswer = lastAttempt.answers.find(
+          (a: any) => a.questionId?.toString?.() === q.questionId?.toString?.()
+        );
+
+        return {
+          ...q,
+          userAnswer: userAnswer?.userAnswer,
+          isCorrect: userAnswer?.isCorrect,
+          earnedPoints: userAnswer?.earnedPoints,
+        };
+      });
+
+      res.json({
+        status: httpStatus.OK,
+        message: 'Quiz retrieved successfully',
+        data: {
+          ...quizData,
+          questions: questionsWithAnswers,
+          completed: true,
+          submission: {
+            score: lastAttempt.score,
+            passed: lastAttempt.passed,
+            submittedAt: lastAttempt.submittedAt,
+            timeTaken: lastAttempt.timeTaken,
+          },
+          metadata: {
+            attemptNumber: quizAttempts.length,
+            maxAttempts: quiz.maxAttempts,
+            timeLimit: quiz.timeLimit,
+            dueDate: quiz.dueDate,
+          },
+        },
+      });
+      return;
+    }
+
+    // Quiz not yet attempted - sanitize for taking the quiz
     const sanitizedQuestions = quizData.questions.map((q: any) => {
       const sanitized = { ...q };
-      // Remove correctAnswer from question object if showing answers is disabled
-      if (!quiz.showCorrectAnswers) {
-        delete sanitized.correctAnswer;
+      // Always remove correctAnswer before submission to prevent cheating
+      delete sanitized.correctAnswer;
+      // Remove explanation before submission
+      delete sanitized.explanation;
+      // Remove isCorrect from options before submission
+      if (sanitized.options) {
+        sanitized.options = sanitized.options.map((opt: any) => ({
+          id: opt.id,
+          text: opt.text,
+        }));
       }
       // Shuffle options if enabled
       if (quiz.shuffleOptions && sanitized.options) {
@@ -97,6 +147,7 @@ export const getQuiz = async (req: Request, res: Response, next: NextFunction) =
       data: {
         ...quizData,
         questions: finalQuestions,
+        completed: false,
         metadata: {
           attemptNumber: quizAttempts.length + 1,
           maxAttempts: quiz.maxAttempts,
@@ -132,7 +183,7 @@ export const submitQuiz = async (req: Request, res: Response, next: NextFunction
     const quiz = await (Quiz as any).get(quizId);
 
     // Verify quiz belongs to course
-    if (quiz.course.toString() !== courseId) {
+    if (quiz.course._id.toString() !== courseId) {
       return res.status(httpStatus.FORBIDDEN).json({
         status: httpStatus.FORBIDDEN,
         message: 'Quiz does not belong to this course',
@@ -224,13 +275,14 @@ export const submitQuiz = async (req: Request, res: Response, next: NextFunction
           correctAnswers: scoredAnswers.filter((a: any) => a.isCorrect).length,
           timeTaken,
         },
-        results: quiz.showCorrectAnswers
-          ? scoredAnswers
-          : scoredAnswers.map((a: any) => ({
-              questionId: a.questionId,
-              userAnswer: a.userAnswer,
-              isCorrect: a.isCorrect,
-            })),
+        results: scoredAnswers.map((a: any) => ({
+          questionId: a.questionId,
+          userAnswer: a.userAnswer,
+          isCorrect: a.isCorrect,
+          correctAnswer: a.correctAnswer,
+          points: a.points,
+          earnedPoints: a.earnedPoints,
+        })),
       },
     });
   } catch (error) {

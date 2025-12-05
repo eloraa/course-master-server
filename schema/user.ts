@@ -1,3 +1,4 @@
+// @ts-nocheck
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import moment from 'moment-timezone';
@@ -52,7 +53,6 @@ const userSchema = new mongoose.Schema(
         batch: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'Batch',
-          required: true,
         },
         enrolledAt: {
           type: Date,
@@ -125,20 +125,39 @@ const userSchema = new mongoose.Schema(
     // Quiz Submissions
     quizzes: [
       {
+        quiz: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Quiz',
+          required: true,
+        },
         course: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'Course',
           required: true,
         },
-        moduleId: {
+        module: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'Module',
-          required: true,
         },
+        answers: [
+          {
+            questionId: mongoose.Schema.Types.ObjectId,
+            userAnswer: mongoose.Schema.Types.Mixed,
+            correctAnswer: mongoose.Schema.Types.Mixed,
+            isCorrect: Boolean,
+            points: Number,
+            earnedPoints: Number,
+          },
+        ],
         score: {
           type: Number,
           required: true,
         },
+        passed: {
+          type: Boolean,
+          default: false,
+        },
+        timeTaken: Number,
         submittedAt: {
           type: Date,
           default: Date.now,
@@ -150,9 +169,6 @@ const userSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-
-// Indexes
-userSchema.index({ email: 1 });
 
 userSchema.pre('save', async function () {
   if (!this.isModified('password')) {

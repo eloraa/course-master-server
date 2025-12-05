@@ -9,10 +9,6 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
   try {
     const user = (req as any).user;
 
-    // Set instructor as the logged-in user if not provided
-    if (!req.body.instructor) {
-      req.body.instructor = user._id;
-    }
     req.body.createdBy = user._id;
 
     const course = new Course(req.body);
@@ -95,10 +91,16 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
       course = await (Course as any).getBySlug(id);
     }
 
+    // Get accurate module stats
+    const moduleStats = await (Course as any).getModuleStats(course._id);
+
     res.json({
       status: httpStatus.OK,
       message: 'Course retrieved successfully',
-      data: course.transform(),
+      data: {
+        ...course.transform(),
+        moduleStats,
+      },
     });
   } catch (error) {
     next(error);

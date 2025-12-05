@@ -81,10 +81,16 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
     delete transformed.coupons;
     delete transformed.gradingPolicy;
 
+    // Get accurate published module stats (excluding drafts)
+    const moduleStats = await (Course as any).getPublishedModuleStats(course._id);
+
     res.json({
       status: httpStatus.OK,
       message: 'Course retrieved successfully',
-      data: transformed,
+      data: {
+        ...transformed,
+        moduleStats,
+      },
     });
   } catch (error) {
     next(error);
@@ -135,7 +141,7 @@ export const getCurriculum = async (req: Request, res: Response, next: NextFunct
           title: module.title,
           description: module.description,
           order: module.order,
-          lessonCount: module.lessonCount,
+          lessonCount: lessonsResult.lessons.length,
           lessons: lessonsResult.lessons.map((lesson: any) => ({
             id: lesson._id,
             title: lesson.title,

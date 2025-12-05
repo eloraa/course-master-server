@@ -31,14 +31,20 @@ export const list = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { page = 1, perPage = 30, course, module, isPublished, type } = req.query;
 
-    const result: any = await (Quiz as any).list({
+    const listOptions: any = {
       page: Number(page),
       perPage: Number(perPage),
       course,
       module,
-      isPublished: isPublished === 'true',
       type,
-    });
+    };
+
+    // Only filter by isPublished if explicitly provided
+    if (isPublished !== undefined) {
+      listOptions.isPublished = isPublished === 'true';
+    }
+
+    const result: any = await (Quiz as any).list(listOptions);
 
     res.json({
       status: httpStatus.OK,
@@ -88,6 +94,27 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
     res.json({
       status: httpStatus.OK,
       message: 'Quiz updated successfully',
+      data: updatedQuiz.transform(),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Publish/unpublish quiz
+ */
+export const publish = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const quiz = await (Quiz as any).get(id);
+
+    quiz.isPublished = !quiz.isPublished;
+    const updatedQuiz: any = await quiz.save();
+
+    res.json({
+      status: httpStatus.OK,
+      message: `Quiz ${updatedQuiz.isPublished ? 'published' : 'unpublished'} successfully`,
       data: updatedQuiz.transform(),
     });
   } catch (error) {

@@ -2,15 +2,25 @@ import fs from 'node:fs';
 import path from 'node:path';
 import winston from 'winston';
 
-const logDir = path.join(__dirname, '..', 'logs');
-if (!fs.existsSync(logDir)) {
-  fs.mkdirSync(logDir, { recursive: true });
-}
+const isProduction = process.env.NODE_ENV === 'production';
+const transports: winston.transport[] = [];
 
-const logger = winston.createLogger({
-  level: 'info',
-  format: winston.format.json(),
-  transports: [
+// In production (Vercel), only use console transport
+// Vercel captures console logs automatically
+if (isProduction) {
+  transports.push(
+    new winston.transports.Console({
+      format: winston.format.json(),
+    })
+  );
+} else {
+  // In development, use file transports
+  const logDir = path.join(__dirname, '..', 'logs');
+  if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+  }
+
+  transports.push(
     new winston.transports.File({
       dirname: logDir,
       filename: 'error.log',
@@ -20,20 +30,17 @@ const logger = winston.createLogger({
       dirname: logDir,
       filename: 'combined.log',
     }),
-  ],
-});
-
-//
-// If we're not in production then log to the `console` with the format:
-// `${info.level}: ${info.message} JSON.stringify({ ...rest }) `
-//
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(
     new winston.transports.Console({
       format: winston.format.simple(),
     })
   );
 }
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  transports,
+});
 
 logger.stream({
   write: (message: string) => {

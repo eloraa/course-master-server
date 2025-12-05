@@ -41,7 +41,17 @@ app.use(methodOverride());
 app.use(helmet());
 
 // enable CORS - Cross Origin Resource Sharing
-app.use(cors());
+app.use(cors({
+  origin: (origin, callback) => {
+    const allowedOrigins = vars.corsOrigins;
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
 
 // enable authentication
 app.use(passport.initialize());

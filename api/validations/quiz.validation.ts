@@ -24,7 +24,7 @@ export const createQuizSchema = z.object({
     description: z.string().optional(),
     instructions: z.string().optional(),
     course: z.string(), // ObjectId as string
-    module: z.string(), // ObjectId as string
+    module: z.string().optional(), // ObjectId as string
     lesson: z.string().optional(),
     questions: z.array(questionSchema),
     type: z.enum(['practice', 'graded', 'assessment']).default('practice'),

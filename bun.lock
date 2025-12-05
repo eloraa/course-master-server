@@ -37,9 +37,7 @@
         "@types/multer": "^2.0.0",
         "@types/passport": "^1.0.17",
         "@types/passport-jwt": "^4.0.1",
-      },
-      "peerDependencies": {
-        "typescript": "^5",
+        "typescript": "^5.0.0",
       },
     },
   },
