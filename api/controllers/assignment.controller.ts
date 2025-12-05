@@ -299,44 +299,39 @@ export const unpublish = async (req: Request, res: Response, next: NextFunction)
 export const getSubmissions = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { page = 1, perPage = 30, status } = req.query;
+    const { page = 1, perPage = 30 } = req.query;
 
     // Get the assignment first
     const assignment = await (Assignment as any).get(id);
 
     // Get user assignments for this assignment
     const User = (await import('@/schema/user')).User;
-    const options: any = { 'assignments.assignment': id };
 
-    if (status) {
-      options['assignments.$.status'] = status;
-    }
-
-    const users = await User.find(options)
+    const users = await User.find({ 'assignments.assignment': id })
       .select('name email assignments')
       .exec();
 
     // Filter and format submissions
     const submissions = users
-      .map((user: any) => {
-        const userAssignment = user.assignments.find((a: any) => a.assignment.toString() === id);
-        return userAssignment ? {
-          id: userAssignment._id,
-          user: {
-            id: user._id,
-            name: user.name,
-            email: user.email,
-          },
-          assignment: userAssignment.assignment,
-          status: userAssignment.status,
-          submittedAt: userAssignment.submittedAt,
-          score: userAssignment.score,
-          feedback: userAssignment.feedback,
-          gradedAt: userAssignment.gradedAt,
-          gradedBy: userAssignment.gradedBy,
-        } : null;
-      })
-      .filter(Boolean);
+      .flatMap((user: any) => {
+        return user.assignments
+          .filter((a: any) => a.assignment?.toString() === id)
+          .map((userAssignment: any) => ({
+            id: userAssignment._id,
+            user: {
+              id: user._id,
+              name: user.name,
+              email: user.email,
+            },
+            assignment: userAssignment.assignment,
+            answer: userAssignment.answer,
+            submittedAt: userAssignment.submittedAt,
+            reviewed: userAssignment.reviewed,
+            grade: userAssignment.grade,
+            feedback: userAssignment.feedback,
+            isLate: userAssignment.isLate,
+          }));
+      });
 
     const startIndex = (Number(page) - 1) * Number(perPage);
     const endIndex = startIndex + Number(perPage);
@@ -367,22 +362,22 @@ export const getSubmissions = async (req: Request, res: Response, next: NextFunc
 export const gradeSubmission = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { assignmentId, submissionId } = req.params;
-    const { score, feedback } = req.body;
+    const { grade, feedback } = req.body;
 
     const adminUser = (req as any).user;
 
     // Validate assignment exists
     const assignment = await (Assignment as any).get(assignmentId);
 
-    // Validate score
-    if (score < 0 || score > assignment.maxScore) {
+    // Validate grade
+    if (grade < 0 || grade > assignment.maxScore) {
       return res.status(httpStatus.BAD_REQUEST).json({
         status: httpStatus.BAD_REQUEST,
         message: 'Validation failed',
         errors: [
           {
-            field: 'score',
-            message: `Score must be between 0 and ${assignment.maxScore}`,
+            field: 'grade',
+            message: `Grade must be between 0 and ${assignment.maxScore}`,
           },
         ],
       });
@@ -409,11 +404,9 @@ export const gradeSubmission = async (req: Request, res: Response, next: NextFun
     }
 
     // Update the submission
-    assignmentSubmission.score = Number(score);
+    assignmentSubmission.grade = Number(grade);
     assignmentSubmission.feedback = feedback || '';
-    assignmentSubmission.status = 'graded';
-    assignmentSubmission.gradedAt = new Date();
-    assignmentSubmission.gradedBy = adminUser._id;
+    assignmentSubmission.reviewed = true;
 
     await user.save();
 
@@ -426,12 +419,12 @@ export const gradeSubmission = async (req: Request, res: Response, next: NextFun
         email: user.email,
       },
       assignment: assignmentSubmission.assignment,
-      status: assignmentSubmission.status,
+      answer: assignmentSubmission.answer,
       submittedAt: assignmentSubmission.submittedAt,
-      score: assignmentSubmission.score,
+      reviewed: assignmentSubmission.reviewed,
+      grade: assignmentSubmission.grade,
       feedback: assignmentSubmission.feedback,
-      gradedAt: assignmentSubmission.gradedAt,
-      gradedBy: adminUser.name,
+      isLate: assignmentSubmission.isLate,
     };
 
     res.json({

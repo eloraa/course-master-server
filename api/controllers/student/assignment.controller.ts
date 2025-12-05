@@ -59,6 +59,8 @@ export const getAssignment = async (req: Request, res: Response, next: NextFunct
               submittedAt: submission.submittedAt,
               reviewed: submission.reviewed,
               grade: submission.grade,
+              feedback: submission.feedback,
+              isLate: submission.isLate,
             }
           : null,
       },
