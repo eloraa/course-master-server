@@ -94,15 +94,19 @@ const userSchema = new mongoose.Schema(
     // Assignments
     assignments: [
       {
+        assignment: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Assignment',
+          required: true,
+        },
         course: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'Course',
           required: true,
         },
-        moduleId: {
+        module: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'Module',
-          required: true,
         },
         answer: {
           type: String,
@@ -118,6 +122,13 @@ const userSchema = new mongoose.Schema(
         },
         grade: {
           type: mongoose.Schema.Types.Mixed,
+        },
+        feedback: {
+          type: String,
+        },
+        isLate: {
+          type: Boolean,
+          default: false,
         },
       },
     ],

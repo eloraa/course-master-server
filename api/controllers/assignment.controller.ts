@@ -97,13 +97,19 @@ export const list = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { page = 1, perPage = 30, course, module, isPublished } = req.query;
 
-    const result: any = await (Assignment as any).list({
+    const listOptions: any = {
       page: Number(page),
       perPage: Number(perPage),
       course,
       module,
-      isPublished: isPublished === 'true',
-    });
+    };
+
+    // Only filter by isPublished if explicitly provided
+    if (isPublished !== undefined) {
+      listOptions.isPublished = isPublished === 'true';
+    }
+
+    const result: any = await (Assignment as any).list(listOptions);
 
     res.json({
       status: httpStatus.OK,
@@ -446,13 +452,19 @@ export const getByCourse = async (req: Request, res: Response, next: NextFunctio
     const { courseId } = req.params;
     const { page = 1, perPage = 30, module, isPublished } = req.query;
 
-    const result: any = await (Assignment as any).list({
+    const listOptions: any = {
       page: Number(page),
       perPage: Number(perPage),
       course: courseId,
       module,
-      isPublished: isPublished === 'true',
-    });
+    };
+
+    // Only filter by isPublished if explicitly provided
+    if (isPublished !== undefined) {
+      listOptions.isPublished = isPublished === 'true';
+    }
+
+    const result: any = await (Assignment as any).list(listOptions);
 
     res.json({
       status: httpStatus.OK,
